@@ -337,7 +337,7 @@
             </div>
             
             <div class="input-group">
-                <label>🏷️ کد اتاق (اختیاری)</label>
+                <label>🏷️ کد اتاق (فقط انگلیسی)</label>
                 <input type="text" id="roomInput" placeholder="پیش‌فرض: general" maxlength="30" value="general">
             </div>
             
@@ -391,7 +391,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // ==========================================
-        // ✅ آدرس درست Supabase تو
+        // اطلاعات Supabase شما
         // ==========================================
         const SUPABASE_URL = 'https://ztpwxbkqfwedwjhdoaad.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_uOeqK-C2dM7FqWU3W0Nv8w_lasTLuAa';
@@ -430,7 +430,16 @@
         
         async function joinRoom() {
             const name = document.getElementById('nameInput').value.trim();
-            const room = document.getElementById('roomInput').value.trim() || 'general';
+            
+            // اول چک می‌کنه ببینه توی URL پارامتر room هست یا نه
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlRoom = urlParams.get('room');
+            const room = urlRoom || document.getElementById('roomInput').value.trim() || 'general';
+            
+            // اگه از URL اومده، input رو هم آپدیت می‌کنه
+            if (urlRoom) {
+                document.getElementById('roomInput').value = urlRoom;
+            }
             
             if (!name) {
                 alert('❌ لطفاً اسمت رو وارد کن!');
@@ -457,7 +466,7 @@
         }
         
         async function loadExistingScores() {
-            console.log('📥 Loading scores...');
+            console.log('📥 Loading scores for room:', currentRoom);
             const { data, error } = await supabaseClient
                 .from('scores')
                 .select('*')
@@ -478,7 +487,7 @@
         }
         
         function subscribeToRealtime() {
-            console.log('🔄 Subscribing to realtime...');
+            console.log('🔄 Subscribing to realtime for room:', currentRoom);
             channel = supabaseClient
                 .channel(`room:${currentRoom}`)
                 .on('postgres_changes', 
@@ -564,7 +573,7 @@
         async function submitScore(videoIndex, factor, value) {
             if (!currentUser) return;
             
-            console.log('💾 Saving:', { videoIndex, factor, value });
+            console.log('💾 Saving:', { videoIndex, factor, value, room: currentRoom });
             
             const { error } = await supabaseClient
                 .from('scores')
@@ -651,7 +660,7 @@
         }
         
         async function resetMyScores() {
-            if (!confirm('مطمئنی؟')) return;
+            if (!confirm('مطمئنی می‌خوای نمره‌هات رو به ۳ برگردونی؟')) return;
             for (let idx = 0; idx < videoNames.length; idx++) {
                 for (const factor of factors) {
                     await supabaseClient.from('scores').upsert({
@@ -664,8 +673,11 @@
         }
         
         function copyRoomLink() {
-            navigator.clipboard.writeText(window.location.href.split('?')[0] + '?room=' + currentRoom);
-            showToast('📋 لینک کپی شد!');
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', currentRoom);
+            navigator.clipboard.writeText(url.toString()).then(() => {
+                showToast('📋 لینک اتاق کپی شد! برای دوستات بفرس');
+            });
         }
         
         function leaveRoom() {
@@ -676,6 +688,7 @@
             currentUser = null;
         }
         
+        // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('joinBtn').addEventListener('click', joinRoom);
             document.getElementById('resetBtn').addEventListener('click', resetMyScores);
@@ -685,6 +698,13 @@
             document.getElementById('nameInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') joinRoom();
             });
+            
+            // اگه توی URL پارامتر room بود، input رو از قبل پر کن
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlRoom = urlParams.get('room');
+            if (urlRoom) {
+                document.getElementById('roomInput').value = urlRoom;
+            }
         });
     </script>
 </body>
